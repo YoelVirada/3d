@@ -1,0 +1,35 @@
+{
+  "compatibility": {
+    "nerfstudio": "v1.1.5 requires gsplat==1.4.0",
+    "torch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124",
+    "cuda_arch": "7.5",
+    "numpy": "1.26.4",
+    "opencv": "opencv-python-headless==4.10.0.84"
+  },
+  "nerfstudio": {
+    "repo": "https://github.com/nerfstudio-project/nerfstudio.git",
+    "tag": "v1.1.5"
+  },
+  "gsplat": {
+    "repo": "https://github.com/nerfstudio-project/gsplat.git",
+    "tag": "v1.4.0"
+  },
+  "sam2": {
+    "repo": "https://github.com/facebookresearch/sam2.git",
+    "tag": "main"
+  },
+  "SegAnyGAussians": {
+    "repo": "https://github.com/Jumpat/SegAnyGAussians.git",
+    "tag": "main"
+  },
+  "gaussian-grouping": {
+    "repo": "https://github.com/lkeab/gaussian-grouping.git",
+    "tag": "main"
+  },
+  "SuGaR": {
+    "repo": "https://github.com/Anttwo/SuGaR.git",
+    "tag": "main",
+    "recursive": true
+  }
+}

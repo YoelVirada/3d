@@ -1,0 +1,66 @@
+[23:28:09] clone nerfstudio @ v1.1.5
+Cloning into '/home/yoel3/projects/3d/third_party/nerfstudio'...
+Note: switching to '6b60855003011b2ca23c2fe3f8e2ca6314c69924'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+[23:28:15] clone gsplat @ v1.5.3
+Cloning into '/home/yoel3/projects/3d/third_party/gsplat'...
+Note: switching to '937e29912570c372bed6747a5c9bf85fed877bae'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+[23:28:22] clone spz @ v2.1.0
+Cloning into '/home/yoel3/projects/3d/third_party/spz'...
+Note: switching to '2cf0be04d86b5f9632d9073ccbbe3b1e6a609f31'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+[23:28:32] clone sam2 @ main
+Cloning into '/home/yoel3/projects/3d/third_party/sam2'...
+[23:28:46] clone SegAnyGAussians @ main
+Cloning into '/home/yoel3/projects/3d/third_party/SegAnyGAussians'...
+[23:28:50] clone gaussian-grouping @ main
+Cloning into '/home/yoel3/projects/3d/third_party/gaussian-grouping'...
+[23:28:58] clone SuGaR @ main
+Cloning into '/home/yoel3/projects/3d/third_party/SuGaR'...
+[23:29:20] setup_third_party.sh done

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Pipeline outputs
+exports/
+logs/
+runs/
+data/captures/*/
+!data/captures/.gitkeep
+
+# Third party clones
+third_party/nerfstudio/
+third_party/gsplat/
+third_party/spz/
+third_party/sam2/
+third_party/SegAnyGAussians/
+third_party/gaussian-grouping/
+third_party/SuGaR/
+third_party/checkpoints/
+
+# Training outputs
+outputs/
+
+# Node
+node_modules/
+apps/viewer-web/dist/
+
+# IDE / OS
+.cursor/
+.DS_Store
+*.swp
+
+# Checkpoints / large artifacts
+*.pt
+*.ckpt
+sam2_checkpoints/
+
+# Local review bundles (not part of the repo)
+*_BUNDLE.txt
