@@ -274,7 +274,7 @@ _exports = DEFAULT_EXPORTS
 _exports.mkdir(parents=True, exist_ok=True)
 app.mount("/exports", StaticFiles(directory=str(_exports)), name="exports")
 
-_runs = RunTracker.RUNS_ROOT
+_runs = getattr(RunTracker, "RUNS_ROOT", REPO_ROOT / "runs")
 _runs.mkdir(parents=True, exist_ok=True)
 app.mount("/runs-files", StaticFiles(directory=str(_runs)), name="runs-files")
 
