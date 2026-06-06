@@ -119,10 +119,15 @@ def execute_pipeline(
             with stg("runtime_asset", tool="@playcanvas/splat-transform") as rec:
                 try:
                     meta = run_runtime_asset_conversion(state)
-                    rec.add_output(paths.runtime_dir)
+                    rec.add_output(paths.runtime_dir / "runtime_assets.json")
                     rec.extra["conversion_time_s"] = meta.get("total_conversion_time_s")
                     rec.extra["gaussian_count"] = meta.get("gaussian_count")
                     rec.extra["errors"] = meta.get("errors", [])
+                    rec.extra["stage_ok"] = meta.get("stage_ok", False)
+                    if not meta.get("stage_ok"):
+                        state.warnings.append(
+                            "runtime_asset: no preview or spz produced; package will use raw scene.ply"
+                        )
                 except RuntimeError as exc:
                     state.warnings.append(f"runtime_asset skipped: {exc}")
                     rec.extra["skipped"] = True

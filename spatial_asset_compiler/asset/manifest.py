@@ -8,23 +8,22 @@ from pathlib import Path
 from spatial_asset_compiler.asset.schemas import CaptureMetadata, Manifest, RuntimeAssets, StreamingHints
 from spatial_asset_compiler.config import ASSET_VERSION, PipelineState
 
+VIEWER_SUPPORTED_SPLAT_SUFFIXES = (".ply",)
 
-def _load_runtime_assets(state: PipelineState) -> RuntimeAssets | None:
+
+def _load_runtime_assets(state: PipelineState) -> tuple[RuntimeAssets | None, str | None]:
     runtime_meta = state.benchmarks.get("runtime_asset")
+    sources: list[dict] = []
     if isinstance(runtime_meta, dict):
-        outputs = runtime_meta.get("outputs") or {}
-        ra = RuntimeAssets(
-            spz=outputs.get("spz"),
-            sog=outputs.get("sog"),
-            preview=outputs.get("preview"),
-            lod=outputs.get("lod"),
-        )
-        if any((ra.spz, ra.sog, ra.preview, ra.lod)):
-            return ra
-
+        sources.append(runtime_meta)
     runtime_json = state.paths.runtime_dir / "runtime_assets.json"
     if runtime_json.exists():
-        raw = json.loads(runtime_json.read_text(encoding="utf-8"))
+        try:
+            sources.append(json.loads(runtime_json.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+    for raw in sources:
         outputs = raw.get("outputs") or {}
         ra = RuntimeAssets(
             spz=outputs.get("spz"),
@@ -32,19 +31,24 @@ def _load_runtime_assets(state: PipelineState) -> RuntimeAssets | None:
             preview=outputs.get("preview"),
             lod=outputs.get("lod"),
         )
+        viewer_preview = raw.get("viewer_supported_preview")
         if any((ra.spz, ra.sog, ra.preview, ra.lod)):
-            return ra
-    return None
+            return ra, viewer_preview
+    return None, None
 
 
-def _preview_asset(runtime_assets: RuntimeAssets | None) -> str:
-    if runtime_assets:
-        if runtime_assets.preview:
-            return runtime_assets.preview
-        if runtime_assets.sog:
-            return runtime_assets.sog
-        if runtime_assets.spz:
-            return runtime_assets.spz
+def _viewer_preview_asset(
+    runtime_assets: RuntimeAssets | None,
+    viewer_supported_preview: str | None,
+) -> str:
+    if viewer_supported_preview and viewer_supported_preview.endswith(
+        VIEWER_SUPPORTED_SPLAT_SUFFIXES
+    ):
+        return viewer_supported_preview
+    if runtime_assets and runtime_assets.preview:
+        preview = runtime_assets.preview
+        if preview.endswith(VIEWER_SUPPORTED_SPLAT_SUFFIXES):
+            return preview
     return "scene.ply"
 
 
@@ -59,9 +63,9 @@ def build_manifest(state: PipelineState) -> Manifest:
         except Exception:
             capture_meta = raw
 
-    runtime_assets = _load_runtime_assets(state)
+    runtime_assets, viewer_supported_preview = _load_runtime_assets(state)
     hints = StreamingHints(
-        preview_asset=_preview_asset(runtime_assets),
+        preview_asset=_viewer_preview_asset(runtime_assets, viewer_supported_preview),
         lod_supported=bool(runtime_assets and runtime_assets.lod),
         selection_authority="ply",
     )

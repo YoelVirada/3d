@@ -33,6 +33,10 @@ class ProfileConfig:
     ar_min_translation_m: float = 0.02
     ar_max_translation_jump_m: float = 0.5
     ar_max_rotation_jump_deg: float = 25.0
+    runtime_enable_full_sog: bool = False
+    runtime_enable_lod: bool = False
+    runtime_preview_decimate: str = "25%"
+    runtime_conversion_timeout_s: float = 180.0
 
 
 PROFILES: dict[str, ProfileConfig] = {
@@ -46,6 +50,9 @@ PROFILES: dict[str, ProfileConfig] = {
         ar_max_frames=80,
         ar_min_time_delta_s=0.25,
         ar_min_translation_m=0.02,
+        runtime_enable_full_sog=False,
+        runtime_enable_lod=False,
+        runtime_conversion_timeout_s=180.0,
     ),
     "production": ProfileConfig(
         name="production",
@@ -57,6 +64,9 @@ PROFILES: dict[str, ProfileConfig] = {
         ar_max_frames=200,
         ar_min_time_delta_s=0.20,
         ar_min_translation_m=0.015,
+        runtime_enable_full_sog=True,
+        runtime_enable_lod=True,
+        runtime_conversion_timeout_s=900.0,
     ),
     "mesh-full": ProfileConfig(
         name="mesh-full",

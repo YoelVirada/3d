@@ -65,18 +65,8 @@ export class SpatialAssetPackage {
 
   getSplatUrl(): string {
     const hinted = this.manifest.streaming_hints?.preview_asset;
-    if (hinted) {
+    if (hinted && hinted.endsWith(".ply")) {
       return resolveUrl(this.baseUrl, hinted);
-    }
-    const runtime = this.manifest.runtime_assets;
-    if (runtime?.preview) {
-      return resolveUrl(this.baseUrl, runtime.preview);
-    }
-    if (runtime?.sog) {
-      return resolveUrl(this.baseUrl, runtime.sog);
-    }
-    if (runtime?.spz) {
-      return resolveUrl(this.baseUrl, runtime.spz);
     }
     return resolveUrl(this.baseUrl, this.manifest.raw_splat_path);
   }

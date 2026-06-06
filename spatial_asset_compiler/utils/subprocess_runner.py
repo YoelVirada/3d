@@ -48,14 +48,41 @@ def run_command(
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
     start = time.perf_counter()
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout_s,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired as exc:
+        duration_s = time.perf_counter() - start
+        stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+        stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
+        result = CommandResult(
+            command=cmd,
+            returncode=-1,
+            stdout=stdout,
+            stderr=(stderr + f"\nTIMEOUT after {timeout_s}s").strip(),
+            duration_s=duration_s,
+            log_path=log_path,
+        )
+        if log_path:
+            with open(log_path, "w", encoding="utf-8") as f:
+                for line in log_header or []:
+                    f.write(f"{line}\n")
+                f.write(f"# cmd: {' '.join(cmd)}\n")
+                f.write(f"# exit: timeout\n")
+                f.write(f"# duration_s: {duration_s:.2f}\n\n")
+                f.write("=== stdout ===\n")
+                f.write(stdout)
+                f.write("\n=== stderr ===\n")
+                f.write(result.stderr)
+        if check:
+            raise CommandError(result, hint=hint or f"Command timed out after {timeout_s}s")
+        return result
     duration_s = time.perf_counter() - start
     result = CommandResult(
         command=cmd,
