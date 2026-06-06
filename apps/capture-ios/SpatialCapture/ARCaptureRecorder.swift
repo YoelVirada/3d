@@ -149,25 +149,99 @@ enum SimpleZip {
             }
         }
         var out = Data()
-        var offsets: [(String, UInt32, UInt32, UInt32)] = []
+        var zipEntries: [ZipEntry] = []
         for (name, data) in entries {
             let offset = UInt32(out.count)
             let nameData = Data(name.utf8)
-            let local = localHeader(name: nameData, size: UInt32(data.count))
+            let size = UInt32(data.count)
+            let crc = zipCRC32(of: data)
+            let local = localHeader(name: nameData, size: size, crc: crc)
             out.append(local)
             out.append(data)
-            offsets.append((name, offset, UInt32(data.count), UInt32(data.count)))
+            zipEntries.append(ZipEntry(name: name, offset: offset, crc: crc, size: size))
         }
         let cdStart = UInt32(out.count)
-        for (name, offset, comp, uncomp) in offsets {
-            out.append(centralDir(name: Data(name.utf8), offset: offset, comp: comp, uncomp: uncomp))
+        for entry in zipEntries {
+            out.append(
+                centralDir(
+                    name: Data(entry.name.utf8),
+                    offset: entry.offset,
+                    comp: entry.size,
+                    uncomp: entry.size,
+                    crc: entry.crc
+                )
+            )
         }
         let cdSize = UInt32(out.count) - cdStart
         out.append(endRecord(count: UInt16(entries.count), cdSize: cdSize, cdStart: cdStart))
         try out.write(to: zipURL)
+        #if DEBUG
+        try validateStoreZip(at: zipURL)
+        #endif
     }
 
-    private static func localHeader(name: Data, size: UInt32) -> Data {
+    /// PKZIP CRC-32 for store-only ZIP entries.
+    static func zipCRC32(of data: Data) -> UInt32 {
+        var crc: UInt32 = 0xFFFF_FFFF
+        for byte in data {
+            let idx = Int((crc ^ UInt32(byte)) & 0xFF)
+            crc = (crc >> 8) ^ crc32Table[idx]
+        }
+        return crc ^ 0xFFFF_FFFF
+    }
+
+    #if DEBUG
+    /// Parse a store-only ZIP written by this module and verify entry CRC-32 values.
+    static func validateStoreZip(at url: URL) throws {
+        let zip = try Data(contentsOf: url)
+        var offset = 0
+        var entryCount = 0
+        while offset + 30 <= zip.count {
+            let sig = zip.readUInt32LE(at: offset)
+            guard sig == 0x0403_4B50 else { break }
+            let crc = zip.readUInt32LE(at: offset + 14)
+            let compSize = zip.readUInt32LE(at: offset + 18)
+            let uncompSize = zip.readUInt32LE(at: offset + 22)
+            let nameLen = Int(zip.readUInt16LE(at: offset + 26))
+            let extraLen = Int(zip.readUInt16LE(at: offset + 28))
+            let dataStart = offset + 30 + nameLen + extraLen
+            guard compSize == uncompSize else {
+                throw ZipValidationError.compressionNotSupported
+            }
+            guard dataStart + Int(compSize) <= zip.count else {
+                throw ZipValidationError.truncatedEntry
+            }
+            let payload = zip.subdata(in: dataStart..<(dataStart + Int(compSize)))
+            guard zipCRC32(of: payload) == crc else {
+                throw ZipValidationError.badCRC
+            }
+            offset = dataStart + Int(compSize)
+            entryCount += 1
+        }
+        guard entryCount > 0 else {
+            throw ZipValidationError.emptyArchive
+        }
+    }
+    #endif
+
+    private struct ZipEntry {
+        let name: String
+        let offset: UInt32
+        let crc: UInt32
+        let size: UInt32
+    }
+
+    private static let crc32Table: [UInt32] = {
+        (0..<256).map { i -> UInt32 in
+            var c = UInt32(i)
+            for _ in 0..<8 {
+                c = (c & 1) != 0 ? (0xEDB8_8320 ^ (c >> 1)) : (c >> 1)
+            }
+            return c
+        }
+    }()
+
+    private static func localHeader(name: Data, size: UInt32, crc: UInt32) -> Data {
         var d = Data()
         d.appendLE(UInt32(0x04034b50))
         d.appendLE(UInt16(20))
@@ -175,7 +249,7 @@ enum SimpleZip {
         d.appendLE(UInt16(0))
         d.appendLE(UInt16(0))
         d.appendLE(UInt16(0))
-        d.appendLE(UInt32(0))
+        d.appendLE(crc)
         d.appendLE(size)
         d.appendLE(size)
         d.appendLE(UInt16(name.count))
@@ -184,7 +258,13 @@ enum SimpleZip {
         return d
     }
 
-    private static func centralDir(name: Data, offset: UInt32, comp: UInt32, uncomp: UInt32) -> Data {
+    private static func centralDir(
+        name: Data,
+        offset: UInt32,
+        comp: UInt32,
+        uncomp: UInt32,
+        crc: UInt32
+    ) -> Data {
         var d = Data()
         d.appendLE(UInt32(0x02014b50))
         d.appendLE(UInt16(20))
@@ -193,7 +273,7 @@ enum SimpleZip {
         d.appendLE(UInt16(0))
         d.appendLE(UInt16(0))
         d.appendLE(UInt16(0))
-        d.appendLE(UInt32(0))
+        d.appendLE(crc)
         d.appendLE(comp)
         d.appendLE(uncomp)
         d.appendLE(UInt16(name.count))
@@ -221,7 +301,25 @@ enum SimpleZip {
     }
 }
 
+private enum ZipValidationError: Error {
+    case badCRC
+    case compressionNotSupported
+    case truncatedEntry
+    case emptyArchive
+}
+
 private extension Data {
+    func readUInt16LE(at offset: Int) -> UInt16 {
+        UInt16(self[offset]) | (UInt16(self[offset + 1]) << 8)
+    }
+
+    func readUInt32LE(at offset: Int) -> UInt32 {
+        UInt32(self[offset])
+            | (UInt32(self[offset + 1]) << 8)
+            | (UInt32(self[offset + 2]) << 16)
+            | (UInt32(self[offset + 3]) << 24)
+    }
+
     mutating func appendLE(_ v: UInt16) {
         var x = v.littleEndian
         append(Data(bytes: &x, count: 2))
