@@ -22,7 +22,6 @@ class ProfileConfig:
     name: ProfileName
     frame_stride: int = 2
     splat_max_iterations: int = 7000
-    splat_downscale_factor: float = 2.0
     sam2_model: str = "sam2.1_hiera_small"
     sam2_keyframe_stride: int = 8
     saga_feature_iterations: int = 5000
@@ -41,7 +40,6 @@ PROFILES: dict[str, ProfileConfig] = {
         name="dev",
         frame_stride=3,
         splat_max_iterations=3000,
-        splat_downscale_factor=2.0,
         sam2_keyframe_stride=12,
         saga_feature_iterations=2000,
         allow_vote_fallback=True,
@@ -53,7 +51,6 @@ PROFILES: dict[str, ProfileConfig] = {
         name="production",
         frame_stride=2,
         splat_max_iterations=30000,
-        splat_downscale_factor=1.0,
         sam2_keyframe_stride=6,
         saga_feature_iterations=30000,
         allow_vote_fallback=False,

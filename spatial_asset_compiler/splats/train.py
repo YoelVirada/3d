@@ -33,7 +33,6 @@ def train_splatfacto(state: PipelineState) -> dict:
     p = state.paths
     data_dir = _data_dir_for_training(state)
     max_iter = state.profile.splat_max_iterations
-    downscale = state.profile.splat_downscale_factor
 
     cmd = [
         _find_ns_train(),
@@ -42,8 +41,6 @@ def train_splatfacto(state: PipelineState) -> dict:
         str(data_dir),
         "--max-num-iterations",
         str(max_iter),
-        "--pipeline.datamanager.dataparser.downscale-factor",
-        str(downscale),
         "--viewer.quit-on-train-completion",
         "True",
     ]
