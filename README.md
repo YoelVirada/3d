@@ -1,6 +1,6 @@
 # Spatial Asset Compiler
 
-Capture-first pipeline: **iPhone video → object-aware 3D spatial asset package**.
+Capture-first pipeline: **iPhone ARKit capture (default) or video → object-aware 3D spatial asset package**.
 
 Setup is **manual and pinned** for reproducibility on WSL2 + RTX 2080 Ti (CUDA 12.4 / compute 7.5). Do not use old conda envs (`3dgs`, `maskgen`), old paths (`stable-3d`, `colmap-cuda`), or patched local Nerfstudio/gsplat experiments.
 
@@ -73,7 +73,9 @@ cd apps/viewer-web && npm install && npm run dev -- --host
 
 **Mac:** build `apps/capture-ios` in Xcode only (not the GPU pipeline).
 
-**iPhone:** set server base URL to `http://<PC-LAN-IP>:8787`, record/upload video, poll run status, tap **Open Viewer** when complete. Safari loads the viewer with `run_id` + `api` query params; render metrics POST to `POST /runs/{run_id}/mobile-metrics`.
+**iPhone:** set server base URL to `http://<PC-LAN-IP>:8787`, tap **Record AR Capture** (default), upload `ar_capture.zip`, poll run status, tap **Open Viewer** when complete. ARKit poses skip COLMAP; inspect `exports/{scene_id}/reconstruction/arkit_pose_debug.json` and `arkit_frustum_preview.html` before training completes.
+
+Legacy **Record Video** uses FFmpeg + COLMAP (slow on long captures).
 
 See [apps/capture-ios/README.md](apps/capture-ios/README.md) for LAN / port forwarding.
 
@@ -81,6 +83,11 @@ See [apps/capture-ios/README.md](apps/capture-ios/README.md) for LAN / port forw
 
 ```bash
 bash scripts/run_capture_server.sh
+curl -sf -X POST "http://127.0.0.1:8787/captures/example" \
+  -F "ar_package=@/path/to/ar_capture.zip" \
+  -F "start_pipeline=true" \
+  -F "profile=dev"
+# or video fallback:
 curl -sf -X POST "http://127.0.0.1:8787/captures/example" \
   -F "video=@/path/to/video.mov" \
   -F 'metadata={"device_model":"curl-test"}' \

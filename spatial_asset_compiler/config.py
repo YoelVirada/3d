@@ -29,6 +29,11 @@ class ProfileConfig:
     mesh_top_n: int = 5
     allow_vote_fallback: bool = True
     run_sugar_scene_mesh: bool = False
+    ar_max_frames: int = 80
+    ar_min_time_delta_s: float = 0.25
+    ar_min_translation_m: float = 0.02
+    ar_max_translation_jump_m: float = 0.5
+    ar_max_rotation_jump_deg: float = 25.0
 
 
 PROFILES: dict[str, ProfileConfig] = {
@@ -40,6 +45,9 @@ PROFILES: dict[str, ProfileConfig] = {
         sam2_keyframe_stride=12,
         saga_feature_iterations=2000,
         allow_vote_fallback=True,
+        ar_max_frames=80,
+        ar_min_time_delta_s=0.25,
+        ar_min_translation_m=0.02,
     ),
     "production": ProfileConfig(
         name="production",
@@ -49,6 +57,9 @@ PROFILES: dict[str, ProfileConfig] = {
         sam2_keyframe_stride=6,
         saga_feature_iterations=30000,
         allow_vote_fallback=False,
+        ar_max_frames=200,
+        ar_min_time_delta_s=0.20,
+        ar_min_translation_m=0.015,
     ),
     "mesh-full": ProfileConfig(
         name="mesh-full",
@@ -57,6 +68,9 @@ PROFILES: dict[str, ProfileConfig] = {
         saga_feature_iterations=30000,
         allow_vote_fallback=False,
         run_sugar_scene_mesh=True,
+        ar_max_frames=200,
+        ar_min_time_delta_s=0.20,
+        ar_min_translation_m=0.015,
     ),
 }
 

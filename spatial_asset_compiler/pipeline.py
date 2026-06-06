@@ -9,7 +9,7 @@ from pathlib import Path
 from spatial_asset_compiler.asset.package import finalize_package
 from spatial_asset_compiler.benchmarks.timer import StageTimer
 from spatial_asset_compiler.config import PipelineState
-from spatial_asset_compiler.ingest.video import extract_frames
+from spatial_asset_compiler.ingest import run_ingest
 from spatial_asset_compiler.mesh.mesh_runner import run_mesh_extraction
 from spatial_asset_compiler.object_lifting.lift import run_object_lifting
 from spatial_asset_compiler.reconstruction.nerfstudio_runner import run_reconstruction
@@ -60,26 +60,38 @@ def execute_pipeline(
 
     try:
         if "ingest" in stages:
-            videos = list(paths.capture_dir.glob("video.*"))
+            cap_inputs = list(paths.capture_dir.glob("video.*"))
+            cap_inputs += list((paths.capture_dir / "ar").rglob("*")) if (paths.capture_dir / "ar").exists() else []
+            ingest_tool = "ARKit ingest"
             with stg(
                 "ingest",
-                tool="ffmpeg",
-                inputs=videos,
+                tool=ingest_tool,
+                inputs=cap_inputs[:10] if cap_inputs else [],
             ) as rec:
                 t0 = time.perf_counter()
-                meta = extract_frames(state)
+                meta = run_ingest(state)
                 state.benchmarks.setdefault("ingest", {})["extraction_time_s"] = (
                     time.perf_counter() - t0
                 )
+                rec.tool = "ARKit ingest" if meta.get("capture_mode") == "arkit" else "ffmpeg"
                 rec.add_output(paths.frames_dir)
                 rec.extra["frame_count"] = meta.get("frame_count")
+                rec.extra["capture_mode"] = meta.get("capture_mode")
+                if meta.get("capture_mode") == "arkit":
+                    rec.extra["ar_frames_rejected"] = meta.get("ar_frames_rejected")
             log("ingest: ok")
         elif tracker:
             tracker.record_skipped("ingest")
 
         if "reconstruction" in stages:
-            with stg("reconstruction", tool="nerfstudio / COLMAP") as rec:
+            recon_tool = (
+                "ARKit poses"
+                if state.benchmarks.get("capture_mode") == "arkit"
+                else "nerfstudio / COLMAP"
+            )
+            with stg("reconstruction", tool=recon_tool) as rec:
                 run_reconstruction(state)
+                rec.extra["colmap_skipped"] = state.benchmarks.get("colmap_skipped", False)
                 rec.add_output(paths.reconstruction_dir)
             log("reconstruction: ok")
         elif tracker:

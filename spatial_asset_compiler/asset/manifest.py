@@ -44,6 +44,11 @@ def build_manifest(state: PipelineState) -> Manifest:
         runtime_hints={
             "profile": state.profile.name,
             "gpu_note": "RTX 2080 Ti 11GB — use dev profile for faster iteration",
+            "capture_mode": state.benchmarks.get("capture_mode"),
+            "colmap_skipped": state.benchmarks.get("colmap_skipped"),
+            "ar_frame_count": state.benchmarks.get("ar_frame_count"),
+            "ar_frames_rejected": state.benchmarks.get("ar_frames_rejected"),
+            "arkit_pose_debug_path": state.benchmarks.get("arkit_pose_debug_path"),
         },
     )
 

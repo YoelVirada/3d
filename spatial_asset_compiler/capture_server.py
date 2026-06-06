@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import os
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
+from spatial_asset_compiler.capture.unpack import save_video_capture, unpack_ar_capture_zip
 from spatial_asset_compiler.config import (
     DATA_CAPTURES,
     DEFAULT_EXPORTS,
@@ -27,7 +28,7 @@ from spatial_asset_compiler.config import (
 )
 from spatial_asset_compiler.pipeline import STAGES, execute_pipeline
 from spatial_asset_compiler.runs.schemas import MobileMetricsPayload, RunResultResponse, RunStatusResponse
-from spatial_asset_compiler.runs.tracker import RunTracker
+from spatial_asset_compiler.runs.tracker import RUNS_ROOT, RunTracker
 
 app = FastAPI(title="Spatial Capture Server", version="0.2.0")
 
@@ -39,7 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory handles for active runs (also persisted under runs/{scene_id}/)
 _active: dict[str, RunTracker] = {}
 
 
@@ -63,35 +63,7 @@ def _get_tracker(run_id: str) -> RunTracker:
     return loaded
 
 
-@app.get("/health")
-def health() -> dict:
-    return {"status": "ok", "repo": str(REPO_ROOT)}
-
-
-async def _save_capture(
-    scene_id: str,
-    video: UploadFile,
-    metadata: str,
-) -> tuple[Path, Path, int]:
-    dest = DATA_CAPTURES / scene_id
-    dest.mkdir(parents=True, exist_ok=True)
-    ext = Path(video.filename or "video.mp4").suffix or ".mp4"
-    video_path = dest / f"video{ext}"
-    content = await video.read()
-    video_path.write_bytes(content)
-    try:
-        meta = json.loads(metadata)
-    except json.JSONDecodeError:
-        meta = {"raw": metadata}
-    cap_json = dest / "capture.json"
-    cap_json.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    return video_path, cap_json, len(content)
-
-
-def _run_pipeline_thread(
-    tracker: RunTracker,
-    profile_name: str,
-) -> None:
+def _run_pipeline_thread(tracker: RunTracker, profile_name: str) -> None:
     paths = PipelinePaths(
         scene_id=tracker.scene_id,
         capture_dir=(DATA_CAPTURES / tracker.scene_id).resolve(),
@@ -102,22 +74,32 @@ def _run_pipeline_thread(
     profile = PROFILES.get(profile_name, PROFILES["dev"])
     state = PipelineState(paths=paths, profile=profile)
     log_path = tracker.stage_logs_dir / f"pipeline_{tracker.scene_id}.log"
-    rc = execute_pipeline(state, list(STAGES), tracker=tracker, pipeline_log=log_path)
-    if rc != 0 and tracker._status != "failed":
-        tracker.complete(success=False, failure_reason="pipeline exited with error")
+    try:
+        rc = execute_pipeline(state, list(STAGES), tracker=tracker, pipeline_log=log_path)
+        if rc != 0 and tracker._status != "failed":
+            tracker.complete(success=False, failure_reason="pipeline exited with error")
+    except Exception as e:
+        if tracker._status != "failed":
+            tracker.complete(success=False, failure_reason=str(e))
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok", "repo": str(REPO_ROOT)}
 
 
 @app.post("/captures/{scene_id}")
 async def upload_capture_path(
     scene_id: str,
     request: Request,
-    video: UploadFile = File(...),
+    video: Optional[UploadFile] = File(None),
+    ar_package: Optional[UploadFile] = File(None),
     metadata: str = Form("{}"),
     profile: str = Form("dev"),
     start_pipeline: bool = Form(True),
 ) -> JSONResponse:
     return await _upload_and_maybe_run(
-        scene_id, request, video, metadata, profile, start_pipeline
+        scene_id, request, video, ar_package, metadata, profile, start_pipeline
     )
 
 
@@ -125,74 +107,106 @@ async def upload_capture_path(
 async def upload_capture(
     request: Request,
     scene_id: str = Form(...),
-    video: UploadFile = File(...),
+    video: Optional[UploadFile] = File(None),
+    ar_package: Optional[UploadFile] = File(None),
     metadata: str = Form("{}"),
     profile: str = Form("dev"),
     start_pipeline: bool = Form(True),
 ) -> JSONResponse:
     return await _upload_and_maybe_run(
-        scene_id, request, video, metadata, profile, start_pipeline
+        scene_id, request, video, ar_package, metadata, profile, start_pipeline
     )
 
 
 async def _upload_and_maybe_run(
     scene_id: str,
     request: Request,
-    video: UploadFile,
+    video: Optional[UploadFile],
+    ar_package: Optional[UploadFile],
     metadata: str,
     profile: str,
     start_pipeline: bool,
 ) -> JSONResponse:
+    if not video and not ar_package:
+        raise HTTPException(400, "Provide video or ar_package")
+    if video and ar_package:
+        raise HTTPException(400, "Provide only one of video or ar_package")
+
     t0 = time.perf_counter()
     tracker = RunTracker.for_scene(scene_id, profile=profile)
     _active[tracker.run_id] = tracker
+    dest = DATA_CAPTURES / scene_id
+    capture_mode = "video"
+    outputs: list[Path] = []
+    nbytes = 0
 
-    video_path, cap_json, nbytes = await _save_capture(scene_id, video, metadata)
+    if ar_package:
+        capture_mode = "arkit"
+        content = await ar_package.read()
+        nbytes = len(content)
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+        try:
+            unpack_ar_capture_zip(tmp_path, dest)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+        outputs = [dest / "capture.json", dest / "ar" / "poses.json"]
+    else:
+        content = await video.read()  # type: ignore[union-attr]
+        nbytes = len(content)
+        video_path, cap_json, _ = save_video_capture(
+            dest, content, video.filename or "video.mp4", metadata  # type: ignore[union-attr]
+        )
+        outputs = [video_path, cap_json]
+
     upload_sec = time.perf_counter() - t0
 
     with tracker.stage(
         "upload_receive",
         tool="capture_server",
         inputs=[],
-        outputs=[video_path, cap_json],
-        extra={"upload_duration_sec": round(upload_sec, 3)},
+        outputs=outputs,
+        extra={
+            "upload_duration_sec": round(upload_sec, 3),
+            "capture_mode": capture_mode,
+        },
     ):
         pass
 
     if start_pipeline:
         tracker.set_status("running")
-        thread = threading.Thread(
+        threading.Thread(
             target=_run_pipeline_thread,
             args=(tracker, profile),
             daemon=True,
-        )
-        thread.start()
+        ).start()
         status = "running"
     else:
         tracker.complete(success=True)
         status = "completed"
 
     base = _public_base(request)
-    return JSONResponse(
-        {
-            "scene_id": scene_id,
-            "run_id": tracker.run_id,
-            "status": status,
-            "video": str(video_path.relative_to(REPO_ROOT)),
-            "capture_json": str(cap_json.relative_to(REPO_ROOT)),
-            "bytes": nbytes,
-            "upload_duration_sec": round(upload_sec, 3),
-            "status_url": f"{base}/runs/{tracker.run_id}/status",
-            "result_url": f"{base}/runs/{tracker.run_id}/result",
-        }
-    )
+    resp: dict[str, Any] = {
+        "scene_id": scene_id,
+        "run_id": tracker.run_id,
+        "status": status,
+        "capture_mode": capture_mode,
+        "bytes": nbytes,
+        "upload_duration_sec": round(upload_sec, 3),
+        "status_url": f"{base}/runs/{tracker.run_id}/status",
+        "result_url": f"{base}/runs/{tracker.run_id}/result",
+        "capture_json": str((dest / "capture.json").relative_to(REPO_ROOT)),
+    }
+    if capture_mode == "video" and outputs:
+        resp["video"] = str(outputs[0].relative_to(REPO_ROOT))
+    return JSONResponse(resp)
 
 
 @app.get("/runs/{run_id}/status", response_model=RunStatusResponse)
 def run_status(run_id: str) -> RunStatusResponse:
     tracker = _get_tracker(run_id)
-    d = tracker.status_dict()
-    return RunStatusResponse(**d)
+    return RunStatusResponse(**tracker.status_dict())
 
 
 @app.get("/runs/{run_id}/result", response_model=RunResultResponse)
@@ -256,7 +270,6 @@ async def mobile_metrics(run_id: str, request: Request) -> JSONResponse:
         raise HTTPException(400, "run_id mismatch")
 
     path = tracker.save_mobile_metrics(payload.model_dump())
-    now = datetime.now(timezone.utc).isoformat()
     with tracker.stage(
         "mobile_metrics_received",
         tool="viewer-web / iOS",
@@ -269,14 +282,12 @@ async def mobile_metrics(run_id: str, request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "path": str(path.relative_to(REPO_ROOT))})
 
 
-# Static exports for manifest / scene.ply (viewer on phone loads from capture server)
 _exports = DEFAULT_EXPORTS
 _exports.mkdir(parents=True, exist_ok=True)
 app.mount("/exports", StaticFiles(directory=str(_exports)), name="exports")
 
-_runs = getattr(RunTracker, "RUNS_ROOT", REPO_ROOT / "runs")
-_runs.mkdir(parents=True, exist_ok=True)
-app.mount("/runs-files", StaticFiles(directory=str(_runs)), name="runs-files")
+RUNS_ROOT.mkdir(parents=True, exist_ok=True)
+app.mount("/runs-files", StaticFiles(directory=str(RUNS_ROOT)), name="runs-files")
 
 
 def main() -> None:

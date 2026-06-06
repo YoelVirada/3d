@@ -1,65 +1,52 @@
 # Spatial Capture (iOS)
 
-Capture app for **mobile-in-the-loop** proof: record → upload → poll pipeline → open web viewer → auto-report render metrics.
+Capture app for **mobile-in-the-loop** proof with **ARKit pose capture as the default path**.
 
 Mac/Xcode builds this app only. **GPU processing runs on the WSL server** (`scripts/run_capture_server.sh`).
+
+## Capture modes
+
+| Mode | Upload | Server path |
+|------|--------|-------------|
+| **AR Capture (default)** | `ar_capture.zip` | ARKit poses → `transforms.json`, **COLMAP skipped** |
+| **Video (legacy)** | `video.mov` | FFmpeg + COLMAP |
 
 ## Features
 
 - Configurable API base URL (persisted)
-- Record video (`AVCaptureSession`) or pick from library
-- Upload with progress UI
-- Poll `GET /runs/{run_id}/status` until complete
-- Open **viewer URL** in Safari (includes `run_id` + `api` for metrics)
-- POST upload telemetry to `POST /runs/{run_id}/mobile-metrics`
+- ARSession world tracking @ ~3 Hz with pose + intrinsics per frame
+- Legacy video record / library pick
+- Upload + poll pipeline status
+- Open viewer URL with `run_id` for render metrics
 
-## LAN setup (local proof)
+## LAN setup
 
-1. On WSL, start server and viewer:
-   ```bash
-   bash scripts/run_capture_server.sh
-   cd apps/viewer-web && npm run dev -- --host
-   ```
-2. Find your PC LAN IP (Windows `ipconfig`, or route to WSL).
-3. Forward port **8787** (and **5173** for viewer) from Windows to WSL if needed:
-   ```powershell
-   netsh interface portproxy add v4tov4 listenport=8787 listenaddress=0.0.0.0 connectport=8787 connectaddress=<wsl-ip>
-   netsh interface portproxy add v4tov4 listenport=5173 listenaddress=0.0.0.0 connectport=5173 connectaddress=<wsl-ip>
-   ```
-4. On WSL, set public URLs so result links work on the phone:
-   ```bash
-   export SAC_PUBLIC_BASE_URL=http://<PC-LAN-IP>:8787
-   export SAC_VIEWER_BASE_URL=http://<PC-LAN-IP>:5173
-   ```
-5. In the app **Server** field: `http://<PC-LAN-IP>:8787` (not `localhost`).
-6. Enable **Local Network** in `Info.plist` (`NSAllowsLocalNetworking`).
+1. WSL: `bash scripts/run_capture_server.sh` and `cd apps/viewer-web && npm run dev -- --host`
+2. PC LAN IP + port forward 8787 and 5173 to WSL if needed
+3. `export SAC_PUBLIC_BASE_URL=http://<PC-LAN-IP>:8787`
+4. App server field: `http://<PC-LAN-IP>:8787`
 
-## Xcode
-
-1. Open / create project from `SpatialCapture/` sources.
-2. Add `RunAPI.swift`, `UploadService.swift`, etc. to target.
-3. Set Team + bundle ID.
-4. Build to a physical iPhone (Simulator cannot measure real upload/render on LAN the same way).
-
-## Evidence on server
-
-After a full proof:
+## AR package layout (inside zip)
 
 ```
-data/captures/{scene_id}/video.*
-exports/{scene_id}/manifest.json
-runs/{scene_id}/
-  events.jsonl
-  run_report.json
-  run_report.md
-  metrics/mobile_metrics.json
+capture.json          capture_mode=arkit
+ar/manifest.json
+ar/poses.json
+ar/frames/frame_*.jpg
 ```
 
-## API (used by app)
+## Pre-training sanity checks (server)
 
-- `POST /captures/{scene_id}` — multipart `video`, `metadata`, `start_pipeline=true`
-- `GET /runs/{run_id}/status`
-- `GET /runs/{run_id}/result`
+After AR ingest/reconstruction, inspect on WSL:
+
+- `exports/{scene_id}/reconstruction/arkit_pose_debug.json`
+- `exports/{scene_id}/reconstruction/first_pose_debug.json`
+- `exports/{scene_id}/reconstruction/arkit_frustum_preview.html`
+
+## API
+
+- `POST /captures/{scene_id}` with `ar_package` (zip) or `video`
+- `GET /runs/{run_id}/status` | `/result`
 - `POST /runs/{run_id}/mobile-metrics`
 
-Native Metal viewer is **not** implemented; Safari uses `apps/viewer-web`.
+Android/ARCore: schema-ready, not implemented in v1.

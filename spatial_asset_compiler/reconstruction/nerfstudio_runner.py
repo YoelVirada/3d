@@ -1,4 +1,4 @@
-"""Nerfstudio / COLMAP reconstruction via ns-process-data."""
+"""Nerfstudio reconstruction: ARKit poses or COLMAP via ns-process-data."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ import json
 import shutil
 from pathlib import Path
 
-from spatial_asset_compiler.config import PipelineState, THIRD_PARTY
+from spatial_asset_compiler.capture.mode import detect_capture_mode
+from spatial_asset_compiler.config import PipelineState
+from spatial_asset_compiler.reconstruction.arkit_runner import run_arkit_reconstruction
 from spatial_asset_compiler.utils.subprocess_runner import CommandError, run_command
 
 
@@ -23,6 +25,15 @@ def _find_ns_process_data() -> str:
 
 
 def run_reconstruction(state: PipelineState) -> dict:
+    mode = state.benchmarks.get("capture_mode") or detect_capture_mode(
+        state.paths.capture_dir
+    )
+    if mode == "arkit":
+        return run_arkit_reconstruction(state)
+    return run_colmap_reconstruction(state)
+
+
+def run_colmap_reconstruction(state: PipelineState) -> dict:
     p = state.paths
     frames_dir = p.frames_dir
     if not frames_dir.exists() or not list(frames_dir.glob("frame_*.jpg")):
@@ -31,7 +42,6 @@ def run_reconstruction(state: PipelineState) -> dict:
     out = p.reconstruction_dir
     out.mkdir(parents=True, exist_ok=True)
 
-    # ns-process-data images expects images/ folder
     images_dir = out / "images"
     images_dir.mkdir(exist_ok=True)
     for f in sorted(frames_dir.glob("frame_*.jpg")):
@@ -63,16 +73,9 @@ def run_reconstruction(state: PipelineState) -> dict:
         state.failures.append(f"reconstruction: {e}")
         raise
 
-    # Locate transforms.json
     transforms = None
-    for candidate in [
-        ns_data / "transforms.json",
-        out / "transforms.json",
-        ns_data / "sparse" / "0",
-    ]:
-        if (ns_data / "transforms.json").exists():
-            transforms = ns_data / "transforms.json"
-            break
+    if (ns_data / "transforms.json").exists():
+        transforms = ns_data / "transforms.json"
     for root in [ns_data, out]:
         for t in root.rglob("transforms.json"):
             transforms = t
@@ -84,7 +87,6 @@ def run_reconstruction(state: PipelineState) -> dict:
     if transforms and transforms.exists():
         data = json.loads(transforms.read_text(encoding="utf-8"))
         registered = len(data.get("frames", []))
-        # Copy to canonical location
         canonical = out / "transforms.json"
         if transforms != canonical:
             shutil.copy2(transforms, canonical)
@@ -93,6 +95,7 @@ def run_reconstruction(state: PipelineState) -> dict:
     colmap_ok = (ns_data / "colmap").exists() or (out / "sparse").exists() or registered > 0
     meta = {
         "success": colmap_ok and registered > 0,
+        "colmap_skipped": False,
         "registered_frames": registered,
         "transforms_path": str(transforms) if transforms else None,
         "reconstruction_time_s": result.duration_s,
@@ -100,6 +103,7 @@ def run_reconstruction(state: PipelineState) -> dict:
     }
     state.benchmarks.setdefault("reconstruction", {})
     state.benchmarks["reconstruction"].update(meta)
+    state.benchmarks["colmap_skipped"] = False
     if not meta["success"]:
         raise RuntimeError(
             f"COLMAP/reconstruction failed. registered_frames={registered}. See {log}"

@@ -10,15 +10,14 @@ The official **compression/codec layer is intentionally not implemented yet**. E
 
 ```
 iPhone (apps/capture-ios)
-  → POST /captures/{scene_id}  (WSL FastAPI, returns run_id)
-  → background pipeline on server
-  → GET /runs/{run_id}/status | /result
-  → Safari opens viewer-web (?package=&run_id=&api=)
-  → POST /runs/{run_id}/mobile-metrics
+  → POST /captures/{scene_id}  (ar_package zip OR video)
+  → detect capture_mode: arkit | video
+  → arkit: ingest poses + skip COLMAP → transforms.json
+  → video: FFmpeg + ns-process-data COLMAP
+  → ns-train splatfacto → …
 
-data/captures/{scene_id}/video.* + capture.json
-runs/{scene_id}/events.jsonl + run_report.*
-exports/{scene_id}/manifest.json
+data/captures/{scene_id}/ar/…  OR  video.*
+exports/{scene_id}/reconstruction/arkit_pose_debug.json  (ARKit path)
 ```
 
 WSL is the processing server; Mac/Xcode builds the iOS app only. The **official proof** is this phone path (upload + on-device render metrics). Local video/curl paths are for debugging.
@@ -30,7 +29,7 @@ No `data/raw/*.mp4` CLI bypass.
 ```mermaid
 flowchart LR
   CAP[capture] --> ING[ingest]
-  ING --> REC[reconstruction]
+  ING --> REC[reconstruction ARKit or COLMAP]
   REC --> SPL[splats]
   ING --> SEG[SAM2]
   SEG --> LIFT[SAGA or GG]

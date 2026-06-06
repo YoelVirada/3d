@@ -8,6 +8,7 @@ struct UploadResponse: Decodable {
     let upload_duration_sec: Double?
     let status_url: String?
     let result_url: String?
+    let capture_mode: String?
 }
 
 struct RunStatus: Decodable {
@@ -85,6 +86,56 @@ enum RunAPI {
             throw URLError(.badServerResponse)
         }
         onProgress?(1.0)
+        return try JSONDecoder().decode(UploadResponse.self, from: data)
+    }
+
+    static func uploadARPackage(
+        baseURL: String,
+        sceneId: String,
+        zipURL: URL,
+        metadata: CaptureMetadata
+    ) async throws -> UploadResponse {
+        let base = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: "\(base)/captures/\(sceneId)") else {
+            throw URLError(.badURL)
+        }
+
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "multipart/form-data; boundary=\(boundary)",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        var body = Data()
+        let metaData = try JSONEncoder().encode(metadata)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"metadata\"\r\n\r\n".data(using: .utf8)!)
+        body.append(metaData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"start_pipeline\"\r\n\r\n".data(using: .utf8)!)
+        body.append("true\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"profile\"\r\n\r\n".data(using: .utf8)!)
+        body.append("dev\r\n".data(using: .utf8)!)
+
+        let zipData = try Data(contentsOf: zipURL)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"ar_package\"; filename=\"ar_capture.zip\"\r\n".data(using: .utf8)!
+        )
+        body.append("Content-Type: application/zip\r\n\r\n".data(using: .utf8)!)
+        body.append(zipData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        request.httpBody = body
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
         return try JSONDecoder().decode(UploadResponse.self, from: data)
     }
 
