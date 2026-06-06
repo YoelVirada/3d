@@ -228,6 +228,6 @@ private extension Data {
     }
     mutating func appendLE(_ v: UInt32) {
         var x = v.littleEndian
-        append Data(bytes: &x, count: 4))
+        append(Data(bytes: &x, count: 4))
     }
 }

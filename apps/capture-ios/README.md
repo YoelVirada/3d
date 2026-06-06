@@ -10,10 +10,14 @@ Source of truth: `apps/capture-ios/SpatialCapture/` (Swift + `Info.plist`). The 
 
 ```bash
 brew install xcodegen
+export IOS_DEVELOPMENT_TEAM=YOUR_TEAM_ID
+export IOS_BUNDLE_ID=com.yourname.spatialcapture   # optional; default com.yoel.spatialcapture
 bash scripts/open_ios_project.sh
 ```
 
-This runs `xcodegen generate` in `apps/capture-ios/` and opens `SpatialCaptureRunner.xcodeproj`. Edit files under `SpatialCapture/` only.
+Find your Team ID in [Apple Developer → Membership](https://developer.apple.com/account) or Xcode → Settings → Accounts.
+
+This runs `xcodegen generate` in `apps/capture-ios/` (signing values come from env vars, not committed secrets) and opens `SpatialCaptureRunner.xcodeproj`. Edit files under `SpatialCapture/` only.
 
 ## Capture modes
 
