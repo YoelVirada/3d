@@ -4,6 +4,17 @@ Capture app for **mobile-in-the-loop** proof with **ARKit pose capture as the de
 
 Mac/Xcode builds this app only. **GPU processing runs on the WSL server** (`scripts/run_capture_server.sh`).
 
+## Open in Xcode (from Git)
+
+Source of truth: `apps/capture-ios/SpatialCapture/` (Swift + `Info.plist`). The Xcode project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) — do not copy sources into a separate runner folder.
+
+```bash
+brew install xcodegen
+bash scripts/open_ios_project.sh
+```
+
+This runs `xcodegen generate` in `apps/capture-ios/` and opens `SpatialCaptureRunner.xcodeproj`. Edit files under `SpatialCapture/` only.
+
 ## Capture modes
 
 | Mode | Upload | Server path |

@@ -1,0 +1,36 @@
+name: SpatialCaptureRunner
+options:
+  bundleIdPrefix: com.yoel
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+
+targets:
+  SpatialCaptureRunner:
+    type: application
+    platform: iOS
+    sources:
+      - path: SpatialCapture
+        createIntermediateGroups: true
+    info:
+      path: SpatialCapture/Info.plist
+      properties:
+        CFBundleDisplayName: Spatial Capture
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yoel.spatialcapture
+        INFOPLIST_FILE: SpatialCapture/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    frameworks:
+      - sdk: ARKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: PhotosUI.framework
+      - sdk: CoreImage.framework

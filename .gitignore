@@ -35,6 +35,13 @@ apps/viewer-web/dist/
 .DS_Store
 *.swp
 
+# Xcode / XcodeGen (generated on Mac via scripts/open_ios_project.sh)
+apps/capture-ios/*.xcodeproj/
+apps/capture-ios/*.xcworkspace/
+*.xcuserdata/
+*.xcuserstate
+**/DerivedData/
+
 # Checkpoints / large artifacts
 *.pt
 *.ckpt
