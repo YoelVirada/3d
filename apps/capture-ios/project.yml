@@ -23,6 +23,13 @@ targets:
       properties:
         CFBundleDisplayName: Spatial Capture
         UILaunchScreen: {}
+        NSCameraUsageDescription: Record spatial capture video
+        NSMicrophoneUsageDescription: Need microphone access when recording video.
+        NSMotionUsageDescription: Need motion sensor access for AR camera tracking.
+        NSPhotoLibraryUsageDescription: Select video for spatial pipeline
+        NSLocalNetworkUsageDescription: Upload captures to local dev pipeline server
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
