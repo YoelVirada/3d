@@ -3,15 +3,27 @@
  * Primary entry: loadPackage(manifestUrl) — NOT raw scene.ply.
  */
 
+export interface RuntimeAssets {
+  spz?: string | null;
+  sog?: string | null;
+  preview?: string | null;
+  lod?: string | null;
+}
+
 export interface Manifest {
   asset_version: string;
   scene_id: string;
   raw_splat_path: string;
+  runtime_assets?: RuntimeAssets | null;
   objects_path: string;
   benchmarks_path: string;
   object_groups_dir: string;
   warnings: string[];
-  streaming_hints?: { selection_authority?: string; preview_asset?: string };
+  streaming_hints?: {
+    selection_authority?: string;
+    preview_asset?: string;
+    lod_supported?: boolean;
+  };
 }
 
 export interface ObjectEntry {
@@ -52,6 +64,20 @@ export class SpatialAssetPackage {
   ) {}
 
   getSplatUrl(): string {
+    const hinted = this.manifest.streaming_hints?.preview_asset;
+    if (hinted) {
+      return resolveUrl(this.baseUrl, hinted);
+    }
+    const runtime = this.manifest.runtime_assets;
+    if (runtime?.preview) {
+      return resolveUrl(this.baseUrl, runtime.preview);
+    }
+    if (runtime?.sog) {
+      return resolveUrl(this.baseUrl, runtime.sog);
+    }
+    if (runtime?.spz) {
+      return resolveUrl(this.baseUrl, runtime.spz);
+    }
     return resolveUrl(this.baseUrl, this.manifest.raw_splat_path);
   }
 

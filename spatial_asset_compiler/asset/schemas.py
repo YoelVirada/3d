@@ -24,6 +24,13 @@ class StreamingHints(BaseModel):
     selection_authority: Literal["ply"] = "ply"
 
 
+class RuntimeAssets(BaseModel):
+    spz: str | None = None
+    sog: str | None = None
+    preview: str | None = None
+    lod: str | None = None
+
+
 class Manifest(BaseModel):
     asset_version: str = "0.1.0"
     scene_id: str
@@ -32,6 +39,7 @@ class Manifest(BaseModel):
     frames_dir: str = "frames/"
     reconstruction_dir: str = "reconstruction/"
     raw_splat_path: str = "scene.ply"
+    runtime_assets: RuntimeAssets | None = None
     segmentation_dir: str = "masks/"
     object_groups_dir: str = "object_groups/"
     objects_path: str = "objects.json"

@@ -1,0 +1,9 @@
+{
+  "name": "spatial-asset-runtime-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional CLI tools for spatial asset runtime conversion (not part of core Python env).",
+  "dependencies": {
+    "@playcanvas/splat-transform": "^1.3.0"
+  }
+}

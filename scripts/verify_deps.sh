@@ -179,6 +179,16 @@ done
 
 if [[ $FULL -eq 0 ]]; then
   echo ""
+  echo "=== Runtime asset tools (optional) ==="
+  ST_BIN="$ROOT/tools/runtime/node_modules/.bin/splat-transform"
+  if command -v splat-transform &>/dev/null; then
+    ok "splat-transform: $(command -v splat-transform)"
+  elif [[ -x "$ST_BIN" ]]; then
+    ok "splat-transform: $ST_BIN"
+  else
+    warn "splat-transform missing — bash scripts/setup_runtime_tools.sh for runtime_asset stage"
+  fi
+  echo ""
   echo "=== Heavy-stage envs (not required in default mode) ==="
   for e in saga-lift gaussian-grouping sugar-mesh; do
     if conda env list | grep -qE "^${e}[[:space:]]"; then

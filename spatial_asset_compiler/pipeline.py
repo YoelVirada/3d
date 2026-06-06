@@ -13,6 +13,7 @@ from spatial_asset_compiler.ingest import run_ingest
 from spatial_asset_compiler.mesh.mesh_runner import run_mesh_extraction
 from spatial_asset_compiler.object_lifting.lift import run_object_lifting
 from spatial_asset_compiler.reconstruction.nerfstudio_runner import run_reconstruction
+from spatial_asset_compiler.runtime.convert import run_runtime_asset_conversion
 from spatial_asset_compiler.runs.tracker import RunTracker, StageRecorder
 from spatial_asset_compiler.segmentation.sam2_runner import run_sam2_segmentation
 from spatial_asset_compiler.splats.export import export_gaussian_splat
@@ -23,6 +24,7 @@ STAGES = [
     "ingest",
     "reconstruction",
     "splats",
+    "runtime_asset",
     "segmentation",
     "object_lifting",
     "mesh",
@@ -110,6 +112,24 @@ def execute_pipeline(
         elif tracker:
             tracker.record_skipped("splats_train")
             tracker.record_skipped("splats_export")
+
+        if "runtime_asset" in stages:
+            if not paths.scene_ply.exists():
+                raise RuntimeError("runtime_asset requires scene.ply from splats export")
+            with stg("runtime_asset", tool="@playcanvas/splat-transform") as rec:
+                try:
+                    meta = run_runtime_asset_conversion(state)
+                    rec.add_output(paths.runtime_dir)
+                    rec.extra["conversion_time_s"] = meta.get("total_conversion_time_s")
+                    rec.extra["gaussian_count"] = meta.get("gaussian_count")
+                    rec.extra["errors"] = meta.get("errors", [])
+                except RuntimeError as exc:
+                    state.warnings.append(f"runtime_asset skipped: {exc}")
+                    rec.extra["skipped"] = True
+                    rec.extra["reason"] = str(exc)
+            log("runtime_asset: ok")
+        elif tracker:
+            tracker.record_skipped("runtime_asset")
 
         if "segmentation" in stages:
             with stg("segmentation", tool="SAM2") as rec:

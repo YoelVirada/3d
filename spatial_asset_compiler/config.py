@@ -119,6 +119,10 @@ class PipelinePaths:
         return self.output_dir / "mobile_benchmarks"
 
     @property
+    def runtime_dir(self) -> Path:
+        return self.output_dir / "runtime"
+
+    @property
     def scene_ply(self) -> Path:
         return self.output_dir / "scene.ply"
 

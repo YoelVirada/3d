@@ -5,8 +5,47 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from spatial_asset_compiler.asset.schemas import CaptureMetadata, Manifest, StreamingHints
+from spatial_asset_compiler.asset.schemas import CaptureMetadata, Manifest, RuntimeAssets, StreamingHints
 from spatial_asset_compiler.config import ASSET_VERSION, PipelineState
+
+
+def _load_runtime_assets(state: PipelineState) -> RuntimeAssets | None:
+    runtime_meta = state.benchmarks.get("runtime_asset")
+    if isinstance(runtime_meta, dict):
+        outputs = runtime_meta.get("outputs") or {}
+        ra = RuntimeAssets(
+            spz=outputs.get("spz"),
+            sog=outputs.get("sog"),
+            preview=outputs.get("preview"),
+            lod=outputs.get("lod"),
+        )
+        if any((ra.spz, ra.sog, ra.preview, ra.lod)):
+            return ra
+
+    runtime_json = state.paths.runtime_dir / "runtime_assets.json"
+    if runtime_json.exists():
+        raw = json.loads(runtime_json.read_text(encoding="utf-8"))
+        outputs = raw.get("outputs") or {}
+        ra = RuntimeAssets(
+            spz=outputs.get("spz"),
+            sog=outputs.get("sog"),
+            preview=outputs.get("preview"),
+            lod=outputs.get("lod"),
+        )
+        if any((ra.spz, ra.sog, ra.preview, ra.lod)):
+            return ra
+    return None
+
+
+def _preview_asset(runtime_assets: RuntimeAssets | None) -> str:
+    if runtime_assets:
+        if runtime_assets.preview:
+            return runtime_assets.preview
+        if runtime_assets.sog:
+            return runtime_assets.sog
+        if runtime_assets.spz:
+            return runtime_assets.spz
+    return "scene.ply"
 
 
 def build_manifest(state: PipelineState) -> Manifest:
@@ -20,8 +59,10 @@ def build_manifest(state: PipelineState) -> Manifest:
         except Exception:
             capture_meta = raw
 
+    runtime_assets = _load_runtime_assets(state)
     hints = StreamingHints(
-        preview_asset="scene.ply",
+        preview_asset=_preview_asset(runtime_assets),
+        lod_supported=bool(runtime_assets and runtime_assets.lod),
         selection_authority="ply",
     )
 
@@ -36,6 +77,7 @@ def build_manifest(state: PipelineState) -> Manifest:
         frames_dir="frames/",
         reconstruction_dir="reconstruction/",
         raw_splat_path="scene.ply",
+        runtime_assets=runtime_assets,
         object_lifting_method=state.benchmarks.get("object_lifting_method"),
         object_lifting_degraded=state.benchmarks.get("object_lifting_degraded", False),
         warnings=state.warnings,
@@ -49,6 +91,9 @@ def build_manifest(state: PipelineState) -> Manifest:
             "ar_frame_count": state.benchmarks.get("ar_frame_count"),
             "ar_frames_rejected": state.benchmarks.get("ar_frames_rejected"),
             "arkit_pose_debug_path": state.benchmarks.get("arkit_pose_debug_path"),
+            "runtime_assets_path": "runtime/runtime_assets.json"
+            if (p.runtime_dir / "runtime_assets.json").exists()
+            else None,
         },
     )
 

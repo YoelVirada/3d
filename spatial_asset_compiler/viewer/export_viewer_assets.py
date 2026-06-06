@@ -22,6 +22,17 @@ def export_viewer_assets(state: PipelineState) -> Path:
     if p.scene_ply.exists():
         shutil.copy2(p.scene_ply, viewer / "scene.ply")
 
+    runtime = p.runtime_dir
+    if runtime.exists():
+        vruntime = viewer / "runtime"
+        vruntime.mkdir(parents=True, exist_ok=True)
+        for f in runtime.rglob("*"):
+            if f.is_file():
+                rel = f.relative_to(runtime)
+                dest = vruntime / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, dest)
+
     og = p.object_groups_dir
     if og.exists():
         vog = viewer / "object_groups"

@@ -36,7 +36,8 @@ function renderSidebar(p: SpatialAssetPackage, stats: RenderStats) {
     <div class="stat">Asset v${p.manifest.asset_version}</div>
     ${runId ? `<div class="stat">Run: ${runId}</div>` : ""}
     <h2>Render</h2>
-    <div class="stat">Splat: ${p.manifest.raw_splat_path}</div>
+    <div class="stat">Splat: ${p.getSplatUrl().split("/").pop() ?? p.manifest.raw_splat_path}</div>
+    <div class="stat">Raw PLY: ${p.manifest.raw_splat_path}</div>
     <div class="stat">Manifest fetch: ${p.loadStats.manifestFetchMs.toFixed(0)} ms (${p.loadStats.manifestBytes} B)</div>
     <div class="stat">Package fetch: ${p.loadStats.totalDownloadedBytes} B</div>
     <div class="stat">Load: ${stats.loadMs.toFixed(0)} ms</div>
