@@ -49,10 +49,10 @@ def _detect_capabilities(cli: list[str]) -> dict[str, bool]:
     except Exception:
         help_text = ""
     return {
-        "spz_output": ".spz" in help_text,
+        "spz_output": "SPZ Output Options" in help_text,
         "spz_version_flag": "--spz-version" in help_text,
-        "sog_output": ".sog" in help_text,
-        "lod_output": "lod-meta.json" in help_text,
+        "sog_output": "SOG Output Options" in help_text or "Apply when writing `.sog`" in help_text,
+        "lod_output": "LOD Output Options" in help_text or "lod-meta.json" in help_text,
     }
 
 
