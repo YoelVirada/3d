@@ -19,10 +19,10 @@ struct ContentView: View {
         NavigationStack {
             Form {
                 Section("Server (WSL capture API)") {
-                    TextField("Base URL", text: $settings.serverBaseURL)
+                    TextField("Base URL", text: $settings.serverBaseURL, prompt: Text("http://10.100.102.12:8787"))
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
-                    Text("Use your PC LAN IP, port 8787.")
+                    Text("WSL capture server at http://10.100.102.12:8787")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     TextField("Scene ID", text: $settings.sceneId)

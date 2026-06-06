@@ -10,7 +10,7 @@ final class CaptureSettings: ObservableObject {
 
     init() {
         serverBaseURL = UserDefaults.standard.string(forKey: "serverBaseURL")
-            ?? "http://192.168.1.100:8787"
+            ?? "http://10.100.102.12:8787"
         sceneId = UserDefaults.standard.string(forKey: "sceneId") ?? "example"
     }
 }
