@@ -38,6 +38,7 @@ def run_command(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     log_path: Path | None = None,
+    log_header: list[str] | None = None,
     check: bool = True,
     hint: str = "",
     timeout_s: float | None = None,
@@ -66,6 +67,8 @@ def run_command(
     )
     if log_path:
         with open(log_path, "w", encoding="utf-8") as f:
+            for line in log_header or []:
+                f.write(f"{line}\n")
             f.write(f"# cmd: {' '.join(cmd)}\n")
             f.write(f"# exit: {proc.returncode}\n")
             f.write(f"# duration_s: {duration_s:.2f}\n\n")

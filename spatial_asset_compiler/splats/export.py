@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
 from spatial_asset_compiler.config import PipelineState
 from spatial_asset_compiler.splats.io import count_gaussians_ply, file_size_mb
 from spatial_asset_compiler.utils.subprocess_runner import run_command
+
+_TORCH_EXPORT_ENV = "TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"
 
 
 def _find_ns_export() -> str:
@@ -50,7 +53,15 @@ def export_gaussian_splat(state: PipelineState) -> dict:
         str(export_dir.resolve()),
     ]
     log = p.logs_dir / "splat_export.log"
-    result = run_command(cmd, log_path=log, hint="Check ns-export and checkpoint exist")
+    env = os.environ.copy()
+    env[_TORCH_EXPORT_ENV] = "1"
+    result = run_command(
+        cmd,
+        log_path=log,
+        env=env,
+        log_header=[f"# env: {_TORCH_EXPORT_ENV}=1"],
+        hint="Check ns-export and checkpoint exist",
+    )
 
     ply_files = list(export_dir.rglob("*.ply"))
     if not ply_files:
