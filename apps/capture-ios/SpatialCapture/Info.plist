@@ -4,6 +4,10 @@
 <dict>
     <key>NSCameraUsageDescription</key>
     <string>Record spatial capture video</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Need microphone access when recording video.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Need motion sensor access for AR camera tracking.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Select video for spatial pipeline</string>
     <key>NSLocalNetworkUsageDescription</key>
