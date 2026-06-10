@@ -6,8 +6,8 @@ data/captures/<scene_id>/, and starts the Mobile-GS backend pipeline
 background task.
 
 The server never renders or streams frames back to the client. The pipeline's
-final artifact is a compressed Mobile-GS asset (comp.xz) that a native runtime
-downloads and renders locally.
+final artifact is a compressed Mobile-GS asset (comp.xz). Client-side runtime
+is intentionally TBD (iPhone-native only).
 
 Run:
     pip install fastapi uvicorn python-multipart

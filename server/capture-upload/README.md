@@ -10,8 +10,8 @@ Minimal FastAPI server. Its only jobs:
 5. Serve the final compressed asset (`GET /captures/{scene_id}/asset`).
 
 It does **not** render anything and never streams frames to the client.
-The deliverable is a compressed Mobile-GS asset (`comp.xz`) which the native
-runtime downloads, decodes, and renders locally on the device GPU.
+The deliverable is a compressed Mobile-GS asset (`comp.xz`). Client-side
+runtime is intentionally TBD — iPhone-native only.
 
 ## Run
 

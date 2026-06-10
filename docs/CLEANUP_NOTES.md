@@ -51,7 +51,17 @@ compatibility shims, no optional legacy paths, no dead folders.
 - `scripts/open_ios_project.sh`, `scripts/setup_env.sh`,
   `scripts/verify_deps.sh` — rewritten for the new stack.
 
+## Second cleanup (post-fork)
+
+- Removed `runtime/vulkan-renderer/` and all 3DGS.cpp / Vulkan / MoltenVK /
+  Android-first runtime scaffolding.
+- Removed `SETUP_RUNTIME` / `CHECK_RUNTIME` script flags (they only cloned or
+  verified 3DGS.cpp).
+- Replaced `docs/MOBILE_GS_RUNTIME_PLAN.md` with `docs/RUNTIME_TBD.md`.
+- Added `runtime/README.md` and `runtime/ios-runtime-tbd/` as a documented,
+  intentionally empty runtime gap (iPhone-native only; no renderer scaffold).
+
 ## Added
 
-See `docs/ARCHITECTURE.md` for the four-layer layout and
-`docs/MOBILE_GS_RUNTIME_PLAN.md` for the native runtime roadmap.
+See `docs/ARCHITECTURE.md` for the active layers and `docs/RUNTIME_TBD.md`
+for the paused runtime status.

@@ -14,7 +14,6 @@ training/mobile-gs/outputs/*/
 
 # Third-party clones (fetched by scripts/setup_env.sh)
 third_party/Mobile-GS/
-runtime/vulkan-renderer/third_party/3DGS.cpp/
 
 # IDE / OS
 .cursor/

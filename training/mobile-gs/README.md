@@ -46,3 +46,14 @@ bash training/mobile-gs/run_mobile_gs_train.sh my_scene
 bash training/mobile-gs/run_mobile_gs_compress.sh my_scene
 ls -lh training/mobile-gs/outputs/my_scene/comp.xz
 ```
+
+## Backend validation (`render.py --decode`)
+
+Until a client runtime exists, this is the only end-to-end render check:
+
+```bash
+cd third_party/Mobile-GS
+conda activate mobile-gs
+python render.py -s training/mobile-gs/outputs/my_scene/dataset \
+  -m training/mobile-gs/outputs/my_scene/model --decode
+```

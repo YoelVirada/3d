@@ -6,8 +6,8 @@ of the Mobile-GS pipeline.
 The app records video and uploads it to the capture-upload server. The server
 runs FFmpeg → COLMAP → Mobile-GS training/compression on the GPU host and
 produces a compressed asset (`comp.xz`). **No rendered frames are ever streamed
-back to the phone** — the future native runtime downloads the compressed asset
-and renders it locally.
+back to the phone.** Client-side runtime is intentionally TBD (iPhone-native
+only); the pipeline stops at `comp.xz`.
 
 ## ARKit's role
 

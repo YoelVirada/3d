@@ -1,30 +1,29 @@
 # Architecture
 
-Mobile-GS-centric pipeline. Four layers, one artifact.
+iPhone capture + Mobile-GS backend training/compression. The pipeline stops
+at the compressed artifact; client runtime is intentionally TBD.
 
 ```
-iOS capture app (video)
-        │  upload
+iOS Capture
+        │  upload video
         ▼
 capture-upload server
         │  background task
         ▼
-FFmpeg frame extraction ──► COLMAP dataset ──► Mobile-GS train ──► comp.xz
-                                                                     │
-                                                                     ▼
-                                              native runtime (decode + render on device)
+FFmpeg frame extraction ──► COLMAP dataset ──► Mobile-GS train/compress ──► comp.xz
+                                                                               │
+                                                                               ▼
+                                                                    runtime TBD (iPhone-native only)
 ```
 
-**Hard rule:** the server never streams rendered frames to the client. It
-produces a compressed Mobile-GS asset; the client runtime loads it, decodes
-it, buffers it to the GPU, and renders locally.
+The architecture **explicitly stops at `comp.xz`**. No client renderer is
+implemented in this repository yet.
 
 ## Layer 1 — Capture (`apps/ios-capture/`)
 
 - Native iOS video capture only.
 - ARKit assists the capture itself (live tracking-quality feedback, motion
-  hints) — it does **not** export camera poses. There is no
-  ARKit-to-transforms path.
+  hints) — it does **not** export camera poses.
 - Output: a plain video file uploaded to the server.
 
 ## Layer 2 — Dataset preparation (`training/mobile-gs/`)
@@ -40,20 +39,16 @@ it, buffers it to the GPU, and renders locally.
   is the source of truth for training and compression.
 - `run_mobile_gs_train.sh` / `run_mobile_gs_compress.sh` wrap its CLI.
 - The output artifact is exactly what Mobile-GS emits: **`comp.xz`**.
-  No other runtime formats are produced.
+- Backend validation: `render.py --decode` inside Mobile-GS renders from
+  `comp.xz` on the GPU host (identical to the PLY path).
 
-## Layer 4 — Native runtime research (`runtime/`)
+## Layer 4 — Runtime (`runtime/`) — **not implemented**
 
-- `runtime/mobile-gs-decoder/` — the Mobile-GS CUDA code is the reference for
-  decode/render behavior; goal is a standalone decoder from `comp.xz` to GPU
-  buffers.
-- `runtime/vulkan-renderer/` — [3DGS.cpp](https://github.com/shg8/3DGS.cpp)
-  is the initial Vulkan/C++ renderer base. The core work is replacing its
-  depth sort + alpha blend with a Mobile-GS/SortFreeGS-style depth-aware
-  order-independent pipeline.
-- iOS note: Vulkan is **not** native on iOS — research runs through MoltenVK;
-  the production path is a future Metal port.
-- Final packaging target: a native runtime library, not a web viewer.
+- `runtime/ios-runtime-tbd/` — documented gap; iPhone-native runtime undecided.
+- `runtime/mobile-gs-decoder/` — notes on Mobile-GS CUDA decode behavior
+  (reference/inspection only; not a client renderer).
+- Product direction is iPhone-first. No Vulkan, MoltenVK, 3DGS.cpp, or
+  Android-first runtime work lives in this repo.
 
 ## Server (`server/capture-upload/`)
 

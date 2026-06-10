@@ -5,7 +5,6 @@
 #   - COLMAP
 #   - CUDA / PyTorch in the mobile-gs env
 #   - Mobile-GS repository
-#   - 3DGS.cpp repository (only if CHECK_RUNTIME=1)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -76,16 +75,6 @@ else
   bad "Mobile-GS missing at $MOBILE_GS_DIR (scripts/setup_env.sh)"
 fi
 command -v tmc3 >/dev/null && ok "tmc3 (GPCC) on PATH" || warn "tmc3 not on PATH — required by Mobile-GS compression"
-
-if [[ "${CHECK_RUNTIME:-0}" == "1" ]]; then
-  echo "== 3DGS.cpp repository (runtime) =="
-  RENDERER_DIR="$ROOT/runtime/vulkan-renderer/third_party/3DGS.cpp"
-  if [[ -d "$RENDERER_DIR/.git" ]]; then
-    ok "3DGS.cpp at $RENDERER_DIR"
-  else
-    bad "3DGS.cpp missing (SETUP_RUNTIME=1 bash scripts/setup_env.sh)"
-  fi
-fi
 
 echo
 if [[ "$FAIL" -eq 0 ]]; then

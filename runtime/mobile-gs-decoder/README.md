@@ -1,28 +1,28 @@
-# Mobile-GS decoder (reference layer)
+# Mobile-GS CUDA decode reference
 
-Goal: understand and reimplement the decode path of the Mobile-GS compressed
-asset (`comp.xz`) so a native runtime can load it **without** the training
-stack.
+Notes on how Mobile-GS decodes and renders from `comp.xz` in its CUDA
+reference implementation. This folder documents and inspects behavior — it
+is **not** a client runtime and does not implement iOS rendering.
 
 ## Reference
 
-The CUDA implementation in `third_party/Mobile-GS` is the reference point:
+The CUDA code in `third_party/Mobile-GS` is the ground truth:
 
-- `render.py --decode` — renders directly from `comp.xz` instead of the PLY,
-  with identical results. This is the ground-truth decode behavior.
-- The CUDA kernels implement Mobile-GS's depth-aware order-independent
-  rendering — the same math the native renderer must reproduce.
+- `render.py --decode` — renders from `comp.xz` instead of the PLY file;
+  results are identical. This is the only valid end-to-end validation until
+  an iPhone-native runtime exists.
+- CUDA kernels implement Mobile-GS's depth-aware order-independent rendering.
 
-See `notes_from_cuda_reference.md` for the working notes on the bitstream
-layout and decode steps as extracted from the reference code.
+See `notes_from_cuda_reference.md` for working notes on bitstream layout and
+decode steps.
 
-## Deliverables (research phase)
+## Scope
 
-1. Documented `comp.xz` container layout (entropy coding, quantization
-   codebooks, attribute streams).
-2. A standalone C/C++ decode prototype: `comp.xz` → GPU-uploadable buffers
-   (positions, rotations, scales, opacities, SH/color attributes).
-3. Validation: decoded buffers match the CUDA reference decode bit-exactly
-   (or within documented quantization tolerance).
+- Document `comp.xz` container layout (entropy coding, codebooks, streams).
+- Record what the CUDA reference does so a future iOS-native renderer can be
+  designed from facts, not guesses.
 
-No web viewer, no PLY intermediate — decode targets GPU buffers directly.
+## Out of scope
+
+- Implementing a client renderer (Metal, Vulkan, web, or borrowed engines).
+- Standalone C/C++ decode prototypes — paused until runtime direction is chosen.

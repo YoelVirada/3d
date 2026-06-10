@@ -16,8 +16,8 @@ struct CaptureStatus: Decodable {
 
 /// Minimal client for the capture-upload server.
 /// Upload a video, then poll status until the Mobile-GS pipeline completes.
-/// The server never streams rendered frames back — the produced artifact is a
-/// compressed Mobile-GS asset (comp.xz) for the native runtime to download.
+/// The server never streams rendered frames back — the produced artifact is
+/// Mobile-GS `comp.xz`. Client runtime is TBD (iPhone-native only).
 enum RunAPI {
     static func uploadVideo(
         baseURL: String,
