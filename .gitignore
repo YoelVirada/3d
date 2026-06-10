@@ -3,32 +3,18 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-dist/
-build/
+.pytest_cache/
 
-# Pipeline outputs
-exports/
+# Pipeline data / outputs
 logs/
-runs/
 data/captures/*/
 !data/captures/.gitkeep
+training/mobile-gs/outputs/*/
+!training/mobile-gs/outputs/.gitkeep
 
-# Third party clones
-third_party/nerfstudio/
-third_party/gsplat/
-third_party/spz/
-third_party/sam2/
-third_party/SegAnyGAussians/
-third_party/gaussian-grouping/
-third_party/SuGaR/
-third_party/checkpoints/
-
-# Training outputs
-outputs/
-
-# Node
-node_modules/
-apps/viewer-web/dist/
+# Third-party clones (fetched by scripts/setup_env.sh)
+third_party/Mobile-GS/
+runtime/vulkan-renderer/third_party/3DGS.cpp/
 
 # IDE / OS
 .cursor/
@@ -36,16 +22,11 @@ apps/viewer-web/dist/
 *.swp
 
 # Xcode / XcodeGen (generated on Mac via scripts/open_ios_project.sh)
-apps/capture-ios/*.xcodeproj/
-apps/capture-ios/*.xcworkspace/
+apps/ios-capture/*.xcodeproj/
+apps/ios-capture/*.xcworkspace/
 *.xcuserdata/
 *.xcuserstate
 **/DerivedData/
-
-# Checkpoints / large artifacts
-*.pt
-*.ckpt
-sam2_checkpoints/
 
 # Local review bundles (not part of the repo)
 *_BUNDLE.txt

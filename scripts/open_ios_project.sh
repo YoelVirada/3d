@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IOS_DIR="$ROOT/apps/capture-ios"
+IOS_DIR="$ROOT/apps/ios-capture"
 PROJECT="$IOS_DIR/SpatialCaptureRunner.xcodeproj"
 
 if ! command -v xcodegen >/dev/null 2>&1; then

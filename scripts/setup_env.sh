@@ -1,110 +1,73 @@
 #!/usr/bin/env bash
-# Install main conda env (spatial-asset-clean) with pinned CUDA stack.
-# Prerequisite: bash scripts/setup_third_party.sh --yes
-# Does NOT download SAM2 checkpoints — run download_sam2_checkpoints.sh separately.
-# Requires: --yes  or  SAC_ALLOW_MAIN_ENV_SETUP=1
+# Prepare the backend environment for the Mobile-GS pipeline:
+#   - FFmpeg + COLMAP (dataset preparation)
+#   - conda env `mobile-gs` with CUDA PyTorch (Mobile-GS training/compression)
+#   - Mobile-GS clone in third_party/
+#   - optional: 3DGS.cpp clone for the native renderer (SETUP_RUNTIME=1)
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-_sac_approved=0
-for _arg in "$@"; do
-  [[ "$_arg" == "--yes" ]] && _sac_approved=1
-done
-if [[ "$_sac_approved" != 1 && -z "${SAC_ALLOW_MAIN_ENV_SETUP:-}" ]]; then
-  cat <<'EOF'
-Refusing to modify spatial-asset-clean (reinstalls torch, gsplat, nerfstudio, sam2, etc.).
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+THIRD_PARTY="$ROOT/third_party"
+MOBILE_GS_DIR="$THIRD_PARTY/Mobile-GS"
+RENDERER_DIR="$ROOT/runtime/vulkan-renderer/third_party/3DGS.cpp"
+ENV_NAME="${MOBILE_GS_ENV:-mobile-gs}"
 
-Approve explicitly:
-  bash scripts/setup_env.sh --yes
-  SAC_ALLOW_MAIN_ENV_SETUP=1 bash scripts/setup_env.sh
-EOF
-  exit 1
+log() { echo "[setup_env] $*"; }
+
+# --- system tools: ffmpeg + colmap ---------------------------------------
+if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v colmap >/dev/null 2>&1; then
+  log "installing ffmpeg/colmap via apt (sudo required)"
+  sudo apt-get update -qq
+  sudo apt-get install -y ffmpeg colmap
+else
+  log "ffmpeg and colmap already installed"
 fi
 
-ENV_NAME="${CONDA_ENV:-spatial-asset-clean}"
-CONSTRAINTS="$ROOT/constraints/main-cu124.txt"
-GSPLAT_DIR="$ROOT/third_party/gsplat"
-GSPLAT_TAG="v1.4.0"
-SAM2_DIR="$ROOT/third_party/sam2"
-NERFSTUDIO_DIR="$ROOT/third_party/nerfstudio"
-
-echo "=== Spatial Asset Compiler: setup_env ==="
-echo "Target conda env: $ENV_NAME"
-
-if ! command -v conda &>/dev/null; then
-  echo "ERROR: conda not found"
-  exit 1
+# --- Mobile-GS clone -------------------------------------------------------
+mkdir -p "$THIRD_PARTY"
+if [[ ! -d "$MOBILE_GS_DIR/.git" ]]; then
+  log "cloning Mobile-GS"
+  git clone --recursive https://github.com/xiaobiaodu/Mobile-GS "$MOBILE_GS_DIR"
+else
+  log "Mobile-GS already cloned"
 fi
 
+# --- conda env with CUDA PyTorch ------------------------------------------
+if ! command -v conda >/dev/null 2>&1; then
+  log "ERROR: conda not found — install Miniconda first" >&2
+  exit 1
+fi
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
 if ! conda env list | grep -qE "^${ENV_NAME}[[:space:]]"; then
-  echo "ERROR: conda env '$ENV_NAME' does not exist."
-  echo "Create it manually: conda create -n $ENV_NAME python=3.11 -y"
-  exit 1
+  log "creating conda env '$ENV_NAME' (python 3.11)"
+  conda create -y -n "$ENV_NAME" python=3.11
 fi
-
 conda activate "$ENV_NAME"
 
-if [[ "$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" != "3.11" ]]; then
-  echo "ERROR: $ENV_NAME must use Python 3.11"
-  exit 1
+log "installing PyTorch (cu118) + Mobile-GS requirements"
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+  --index-url https://download.pytorch.org/whl/cu118
+pip install -r "$MOBILE_GS_DIR/requirements.txt"
+
+log "installing capture-upload server deps"
+pip install fastapi uvicorn python-multipart
+
+if ! command -v tmc3 >/dev/null 2>&1; then
+  log "NOTE: tmc3 (MPEG GPCC) not on PATH — required by Mobile-GS compression."
+  log "      Build from https://github.com/MPEGGroup/mpeg-pcc-tmc13 and add to PATH."
 fi
 
-python -m pip install --upgrade pip wheel setuptools
-
-echo "=== Installing pinned torch stack (cu124) ==="
-python -m pip install \
-  torch==2.6.0+cu124 \
-  torchvision==0.21.0+cu124 \
-  --index-url https://download.pytorch.org/whl/cu124
-
-python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'"
-
-echo "=== OpenCV headless (no GUI wheel) ==="
-python -m pip uninstall -y opencv-python 2>/dev/null || true
-python -m pip install --force-reinstall --no-deps opencv-python-headless==4.10.0.84
-
-echo "=== Main package (editable) ==="
-python -m pip install -e "$ROOT"
-
-if [[ ! -d "$NERFSTUDIO_DIR/.git" ]]; then
-  echo "ERROR: $NERFSTUDIO_DIR missing. Run: bash scripts/setup_third_party.sh --yes"
-  exit 1
-fi
-echo "=== Nerfstudio (editable) ==="
-python -m pip install -e "$NERFSTUDIO_DIR"
-
-if [[ ! -d "$GSPLAT_DIR/.git" ]]; then
-  echo "ERROR: third_party/gsplat missing. Run: bash scripts/setup_third_party.sh --yes"
-  exit 1
+# --- optional: native renderer base ----------------------------------------
+if [[ "${SETUP_RUNTIME:-0}" == "1" ]]; then
+  if [[ ! -d "$RENDERER_DIR/.git" ]]; then
+    log "cloning 3DGS.cpp"
+    git clone --recursive https://github.com/shg8/3DGS.cpp "$RENDERER_DIR"
+  else
+    log "3DGS.cpp already cloned"
+  fi
+else
+  log "skipping 3DGS.cpp clone (set SETUP_RUNTIME=1 to enable)"
 fi
 
-echo "=== gsplat: enforce $GSPLAT_TAG + submodules ==="
-git -C "$GSPLAT_DIR" fetch --tags --force
-git -C "$GSPLAT_DIR" checkout "$GSPLAT_TAG"
-git -C "$GSPLAT_DIR" submodule update --init --recursive
-
-export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-7.5}"
-export MAX_JOBS="${MAX_JOBS:-4}"
-echo "TORCH_CUDA_ARCH_LIST=$TORCH_CUDA_ARCH_LIST MAX_JOBS=$MAX_JOBS"
-
-echo "=== gsplat (editable, --no-build-isolation) ==="
-python -m pip install --no-build-isolation -e "$GSPLAT_DIR"
-
-if [[ ! -d "$SAM2_DIR/.git" ]]; then
-  echo "ERROR: $SAM2_DIR missing. Run: bash scripts/setup_third_party.sh --yes"
-  exit 1
-fi
-echo "=== SAM2 (editable, required — after torch) ==="
-python -m pip install -e "$SAM2_DIR"
-
-echo "=== pip check ==="
-python -m pip check
-
-echo "=== setup_env complete ==="
-echo "Next (manual):"
-echo "  bash scripts/download_sam2_checkpoints.sh"
-echo "  bash scripts/setup_heavy_envs.sh --yes"
-echo "  bash scripts/verify_deps.sh"
-echo "  bash scripts/verify_deps.sh --full"
+log "done — run scripts/verify_deps.sh to check the environment"

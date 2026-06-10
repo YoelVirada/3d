@@ -1,9 +1,0 @@
-# Pinned CUDA 12.4 main environment (spatial-asset-clean).
-# Used with: python -m pip install -c constraints/main-cu124.txt ...
-# Do not float these versions for reproducible builds.
-
-torch==2.6.0+cu124
-torchvision==0.21.0+cu124
-numpy==1.26.4
-opencv-python-headless==4.10.0.84
-gsplat==1.4.0
