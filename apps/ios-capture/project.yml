@@ -21,13 +21,13 @@ targets:
     info:
       path: SpatialCapture/Info.plist
       properties:
-        CFBundleDisplayName: Spatial Capture
+        CFBundleDisplayName: 3DGS Capture
         UILaunchScreen: {}
         NSCameraUsageDescription: Record spatial capture video
         NSMicrophoneUsageDescription: Need microphone access when recording video.
         NSMotionUsageDescription: Need motion sensor access for AR camera tracking.
-        NSPhotoLibraryUsageDescription: Select video for spatial pipeline
-        NSLocalNetworkUsageDescription: Upload captures to local dev pipeline server
+        NSPhotoLibraryUsageDescription: Select video for local capture sessions
+        NSLocalNetworkUsageDescription: Legacy debug upload to GPU server (optional)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:

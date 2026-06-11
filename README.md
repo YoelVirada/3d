@@ -1,68 +1,56 @@
-# Mobile-GS Spatial Pipeline
+# 3DGS Capture — iPhone research wrapper
 
-iPhone capture + Mobile-GS backend training/compression. The client runtime is
-**intentionally TBD** — this repo stops at the backend artifact.
+Native 3DGS research wrapper for iPhone for msplat/PocketGS style on-device training experiments.
+
+The app captures spatial video (and future structured frame/pose metadata) locally on the device.
+Training and rendering are **not implemented yet** — Swift protocols and audit docs define the
+path to integrating [`rayanht/msplat`](https://github.com/rayanht/msplat) as the Metal engine.
 
 ```
-iOS Capture ──upload──► capture-upload server
-                              │
-            FFmpeg frames → COLMAP dataset → Mobile-GS train/compress
-                              │
-                            comp.xz
-                              │
-                              ▼
-                    runtime TBD (iPhone-native only)
+iPhone SpatialCapture app
+  Capture (ARKit + camera) → local session (manifest, video, future frames/poses)
+  MsplatBridge (protocols)   → future msplat XCFramework on iOS
+  Training / Rendering       → planned on-device experiments
 ```
-
-The confirmed backend artifact is Mobile-GS **`comp.xz`**. Until an
-iPhone-native runtime is chosen, the only end-to-end validation is
-backend-side `render.py --decode` on the GPU host.
 
 ## Layout
 
-| Path | Layer |
-|------|-------|
-| `apps/ios-capture/` | iOS capture app (ARKit assists capture only; no pose export) |
-| `server/capture-upload/` | minimal upload server; starts the backend pipeline |
-| `training/mobile-gs/` | FFmpeg frames → COLMAP dataset → Mobile-GS train → `comp.xz` |
-| `third_party/Mobile-GS/` | Mobile-GS clone (training/compression source of truth) |
-| `runtime/ios-runtime-tbd/` | runtime gap — not implemented, iPhone-native only |
-| `runtime/mobile-gs-decoder/` | Mobile-GS CUDA decode notes (reference/inspection) |
-| `docs/` | architecture, runtime status, cleanup notes |
+| Path | Purpose |
+|------|---------|
+| `apps/ios-capture/` | iOS app (XcodeGen) — primary codebase |
+| `docs/REPO_AUDIT_FOR_MSPLAT_IOS.md` | Repo audit, keep/deprecate/migrate |
+| `docs/MSPLAT_IOS_PORT_AUDIT.md` | msplat iOS port questions and iPhone-first plan |
+| `scripts/open_ios_project.sh` | Generate and open Xcode project |
+| `scripts/verify_deps.sh` | Check XcodeGen / Xcode (macOS) |
 
-## Quick start
+## Quick start (Mac + iPhone)
 
 ```bash
-# 1. Backend environment (FFmpeg, COLMAP, Mobile-GS + CUDA PyTorch env)
-bash scripts/setup_env.sh
-
-# 2. Verify
-bash scripts/verify_deps.sh
-
-# 3. Run the upload server (GPU host)
-python server/capture-upload/app.py
-
-# 4. iOS app (on a Mac)
 brew install xcodegen
 export IOS_DEVELOPMENT_TEAM=YOUR_TEAM_ID
+bash scripts/verify_deps.sh
 bash scripts/open_ios_project.sh
 ```
 
-Capture a video in the app and upload; the server runs:
-`prepare_frames.sh` → `run_colmap.sh` → `run_mobile_gs_train.sh` →
-`run_mobile_gs_compress.sh`, ending with
-`training/mobile-gs/outputs/<scene>/comp.xz`.
+Build and run `SpatialCaptureRunner` on a physical iPhone (ARKit requires a device).
 
-## Active layers
+### Capture modes
 
-1. **Capture** — `apps/ios-capture/`. Native iOS video recording; ARKit
-   provides tracking-quality feedback only.
-2. **Dataset preparation** — `prepare_frames.sh` (FFmpeg) and `run_colmap.sh`
-   (COLMAP).
-3. **Training/compression** — Mobile-GS train/compress scripts; output is
-   `comp.xz`. Validate with `render.py --decode` on the backend.
-4. **Runtime** — not implemented. See `runtime/ios-runtime-tbd/` and
-   `docs/RUNTIME_TBD.md`.
+| Mode | Output today |
+|------|----------------|
+| Guided Capture (AR-assisted) | `.mov` in temp; local session export TODO |
+| Record Video | `.mov` from system camera |
+| Library picker | existing video file |
 
-Details: `docs/ARCHITECTURE.md` · runtime status: `docs/RUNTIME_TBD.md` ·
-cleanup history: `docs/CLEANUP_NOTES.md`.
+Legacy GPU-server upload is hidden behind the **Legacy upload** toggle (debug only).
+
+## msplat integration status
+
+- Swift protocols in `apps/ios-capture/SpatialCapture/MsplatBridge/`
+- No msplat binary linked yet
+- See `docs/MSPLAT_IOS_PORT_AUDIT.md` for iPhone-first port plan
+
+## Removed (previous direction)
+
+The Mobile-GS GPU-host pipeline (upload server, FFmpeg, COLMAP, CUDA training, `comp.xz`)
+has been removed from this repository. Historical context is summarized in the repo audit doc.

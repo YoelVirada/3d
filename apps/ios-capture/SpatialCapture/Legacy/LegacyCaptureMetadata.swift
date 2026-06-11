@@ -1,7 +1,8 @@
 import UIKit
 import AVFoundation
 
-struct CaptureMetadata: Codable {
+/// Metadata JSON for the legacy server upload path.
+struct LegacyCaptureMetadata: Codable {
     var device_model: String
     var os_version: String?
     var app_version: String?
@@ -12,11 +13,11 @@ struct CaptureMetadata: Codable {
     var timestamp: String
     var network_type: String?
 
-    static func current() -> CaptureMetadata {
+    static func current() -> LegacyCaptureMetadata {
         let device = UIDevice.current
         let formatter = ISO8601DateFormatter()
         let build = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        return CaptureMetadata(
+        return LegacyCaptureMetadata(
             device_model: device.model,
             os_version: device.systemVersion,
             app_version: build,
@@ -29,7 +30,7 @@ struct CaptureMetadata: Codable {
         )
     }
 
-    static func withVideo(url: URL) -> CaptureMetadata {
+    static func withVideo(url: URL) -> LegacyCaptureMetadata {
         var m = current()
         let asset = AVAsset(url: url)
         if let track = asset.tracks(withMediaType: .video).first {

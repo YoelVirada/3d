@@ -2,12 +2,8 @@ import ARKit
 import SceneKit
 import SwiftUI
 
-/// Guided video capture backed by ARKit.
-///
-/// ARKit's role here is capture assistance only: live camera preview plus
-/// tracking-quality feedback so the user keeps slow, well-lit, parallax-rich
-/// motion. The output is a plain video file — no poses, no AR package.
-/// COLMAP on the server recovers camera geometry from the video.
+/// Guided AR capture with live tracking feedback.
+/// Output is structured for local session storage (video + future frame metadata).
 struct ARCaptureView: UIViewControllerRepresentable {
     let onComplete: (URL) -> Void
     let onCancel: () -> Void
@@ -32,8 +28,10 @@ final class ARCaptureViewController: UIViewController, ARSessionDelegate {
     private let statusLabel = UILabel()
     private let recordButton = UIButton(type: .system)
     private var captureStartTime: Date?
-    private var latestTrackingState = "initializing"
+    private var latestTrackingState = CaptureTrackingState.unknown
     private var isRecording = false
+  // TODO: Accumulate CapturedFrameMetadata per ARFrame during recording.
+    private var pendingManifest: CaptureSessionManifest?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -83,7 +81,7 @@ final class ARCaptureViewController: UIViewController, ARSessionDelegate {
             recordButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
         ])
 
-        updateOverlay(message: "Starting AR-assisted capture…")
+        updateOverlay(message: "Starting AR capture…")
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -112,23 +110,24 @@ final class ARCaptureViewController: UIViewController, ARSessionDelegate {
         let frames = recorder?.frameCount ?? 0
         statusLabel.text = """
         \(isRecording ? "REC" : "ready") · \(elapsed)s · \(frames) frames
-        tracking: \(latestTrackingState)
+        tracking: \(latestTrackingState.rawValue)
         Keep motion slow; cover all sides.
         """
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        switch frame.camera.trackingState {
-        case .normal:
-            latestTrackingState = "normal"
-        case .limited(let reason):
-            latestTrackingState = "limited_\(reason)"
-        case .notAvailable:
-            latestTrackingState = "not_available"
-        }
+        latestTrackingState = Self.trackingState(from: frame.camera.trackingState)
+
         if isRecording {
             recorder?.append(frame: frame)
+
+            // TODO: Extract CameraIntrinsics from frame.camera (imageResolution, intrinsics matrix).
+            // TODO: Extract CameraPose from frame.camera.transform (column-major 4×4 cam-to-world).
+            // TODO: Record frame.timestamp and tracking quality into CapturedFrameMetadata.
+            // TODO: Optionally write frame.capturedImage to session frames/ directory via ImageStorage.
+            // TODO: Append frame metadata to pendingManifest.frames.
         }
+
         DispatchQueue.main.async {
             self.updateOverlay()
         }
@@ -175,6 +174,16 @@ final class ARCaptureViewController: UIViewController, ARSessionDelegate {
         isRecording = true
         recordButton.setTitle("Finish Recording", for: .normal)
         recordButton.backgroundColor = .systemBlue
+
+        let device = UIDevice.current
+        let build = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        pendingManifest = CaptureSessionManifest.newSession(
+            captureMode: "ar_guided",
+            deviceModel: device.model,
+            osVersion: device.systemVersion,
+            appVersion: build
+        )
+
         updateOverlay()
     }
 
@@ -186,16 +195,30 @@ final class ARCaptureViewController: UIViewController, ARSessionDelegate {
             return
         }
         recordButton.isEnabled = false
-        updateOverlay(message: "Finalizing video…")
+        updateOverlay(message: "Finalizing capture…")
         Task { @MainActor in
             do {
                 let url = try await recorder.finish()
+                // TODO: Copy video into LocalCaptureSession directory as video.mov.
+                // TODO: Write manifest.json via CaptureSessionLayout.saveManifest.
+                // TODO: Export intrinsics.json / poses for msplat COLMAP-style ingest.
                 self.sceneView.session.pause()
                 self.onComplete?(url)
             } catch {
                 self.recordButton.isEnabled = true
                 self.updateOverlay(message: "Finalize error: \(error.localizedDescription)")
             }
+        }
+    }
+
+    private static func trackingState(from state: ARCamera.TrackingState) -> CaptureTrackingState {
+        switch state {
+        case .normal:
+            return .normal
+        case .limited:
+            return .limited
+        case .notAvailable:
+            return .notAvailable
         }
     }
 }

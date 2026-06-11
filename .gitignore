@@ -5,15 +5,12 @@ __pycache__/
 .venv/
 .pytest_cache/
 
-# Pipeline data / outputs
-logs/
+# Local capture samples (on device or dev copies)
 data/captures/*/
 !data/captures/.gitkeep
-training/mobile-gs/outputs/*/
-!training/mobile-gs/outputs/.gitkeep
 
-# Third-party clones (fetched by scripts/setup_env.sh)
-third_party/Mobile-GS/
+# Third-party clones (msplat fork — future)
+third_party/
 
 # IDE / OS
 .cursor/
@@ -24,7 +21,7 @@ third_party/Mobile-GS/
 apps/ios-capture/*.xcodeproj/
 apps/ios-capture/*.xcworkspace/
 *.xcuserdata/
-*.xcuserstate
+*.xcuserstate/
 **/DerivedData/
 
 # Local review bundles (not part of the repo)

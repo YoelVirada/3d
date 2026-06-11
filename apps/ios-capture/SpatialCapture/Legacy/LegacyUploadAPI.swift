@@ -1,29 +1,27 @@
 import Foundation
 
-struct UploadResponse: Decodable {
-    let scene_id: String
-    let status: String
-    let bytes: Int
-}
+/// Legacy client for the removed GPU-host capture-upload server.
+/// Kept behind `CaptureSettings.legacyServerUploadEnabled` for regression only.
+enum LegacyUploadAPI {
+    struct UploadResponse: Decodable {
+        let scene_id: String
+        let status: String
+        let bytes: Int
+    }
 
-struct CaptureStatus: Decodable {
-    let scene_id: String
-    let status: String
-    let stage: String?
-    let detail: String?
-    let artifact: String?
-}
+    struct CaptureStatus: Decodable {
+        let scene_id: String
+        let status: String
+        let stage: String?
+        let detail: String?
+        let artifact: String?
+    }
 
-/// Minimal client for the capture-upload server.
-/// Upload a video, then poll status until the Mobile-GS pipeline completes.
-/// The server never streams rendered frames back — the produced artifact is
-/// Mobile-GS `comp.xz`. Client runtime is TBD (iPhone-native only).
-enum RunAPI {
     static func uploadVideo(
         baseURL: String,
         sceneId: String,
         videoURL: URL,
-        metadata: CaptureMetadata,
+        metadata: LegacyCaptureMetadata,
         onProgress: ((Double) -> Void)? = nil
     ) async throws -> UploadResponse {
         let base = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -31,8 +29,7 @@ enum RunAPI {
             throw URLError(.badURL)
         }
 
-        let meta = CaptureMetadata.withVideo(url: videoURL)
-
+        let meta = LegacyCaptureMetadata.withVideo(url: videoURL)
         let boundary = UUID().uuidString
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

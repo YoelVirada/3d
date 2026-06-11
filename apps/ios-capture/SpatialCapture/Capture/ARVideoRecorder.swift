@@ -3,10 +3,6 @@ import AVFoundation
 import Foundation
 
 /// Writes ARFrame camera images to a standard .mov file.
-///
-/// ARKit is used only to assist the capture (live tracking-quality feedback
-/// while the user orbits the object). Camera poses are NOT exported —
-/// the server reconstructs poses with COLMAP from the video frames.
 final class ARVideoRecorder {
     enum RecorderError: Error {
         case notRecording
